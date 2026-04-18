@@ -1,0 +1,80 @@
+# Databricks App manifest — Rail Madad Sahayak (single-container: UI + API).
+#
+# Inside the container:
+#   • FastAPI backend  → 127.0.0.1:8000 (loopback only)
+#   • Streamlit UI     → 0.0.0.0:$DATABRICKS_APP_PORT (public)
+#   • Streamlit talks to FastAPI via API_BASE_URL=http://127.0.0.1:8000
+#
+# Deploy with:
+#   databricks apps create rail-madad-sahayak   # once
+#   databricks apps deploy rail-madad-sahayak --source-code-path .
+#
+# Secrets must exist in scope 'bharatbricks' before deploying:
+#   databricks secrets create-scope bharatbricks
+#   databricks secrets put-secret bharatbricks databricks_token --string-value "dapi..."
+#   databricks secrets put-secret bharatbricks sarvam_api_key  --string-value "sk-..."
+#   databricks secrets put-secret bharatbricks tavily_api_key  --string-value "tvly-..."
+#
+# API_BASE_URL does NOT need to be set — start.sh defaults it to loopback.
+
+command:
+  - bash
+  - start.sh
+
+# ── Secret resources (resolved from Databricks Secrets at runtime) ────────────
+resources:
+  - name: databricks-token
+    secret:
+      scope: bharatbricks
+      key: databricks_token
+      permission: READ
+
+  - name: sarvam-api-key
+    secret:
+      scope: bharatbricks
+      key: sarvam_api_key
+      permission: READ
+
+  - name: tavily-api-key
+    secret:
+      scope: bharatbricks
+      key: tavily_api_key
+      permission: READ
+
+# ── Environment variables ─────────────────────────────────────────────────────
+env:
+  # ── Secrets (injected at runtime from the resources block above) ──
+  - name: DATABRICKS_TOKEN
+    valueFrom: databricks-token
+
+  - name: SARVAM_API_KEY
+    valueFrom: sarvam-api-key
+
+  - name: TAVILY_API_KEY
+    valueFrom: tavily-api-key
+
+  # ── SQL Warehouse ─────────────────────────────────────────────────
+  # Replace <warehouse-id> with your actual warehouse ID.
+  - name: DATABRICKS_SQL_HTTP_PATH
+    value: '/sql/1.0/warehouses/<warehouse-id>'
+
+  # ── Unity Catalog tables ──────────────────────────────────────────
+  - name: JOURNEY_TABLE
+    value: 'workspace.default.journey'
+
+  - name: USERS_TABLE
+    value: 'workspace.default.users'
+
+  # ── Model serving endpoints ───────────────────────────────────────
+  - name: TICKET_VISION_ENDPOINT
+    value: 'databricks-llama-4-maverick'
+
+  # ── Vector search ─────────────────────────────────────────────────
+  - name: VECTOR_SEARCH_ENDPOINT
+    value: 'try1'
+
+  - name: VECTOR_SEARCH_INDEX
+    value: 'workspace.rail_adhikar.rules_vs_index'
+
+  - name: VECTOR_SEARCH_EMBEDDING_MODEL
+    value: 'all-MiniLM-L6-v2'
